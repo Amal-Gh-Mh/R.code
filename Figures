@@ -403,7 +403,7 @@ qiime greengenes2 taxonomy-from-table --i-table gg2_table.qza --i-reference-taxo
   --p-sampling-depth 1000\
   --output-dir core-metrics-results
 ###################################
-# Ordination_code_for_paper by R
+# Ordination_code_ by R
 library(phyloseq)
 library(vegan)
 library(qiime2R)
