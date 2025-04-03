@@ -1,6 +1,510 @@
 # CFU plots:
+#I used the same shade for all CFU plots except for some differences in colors, titles, and treatment names.
+# I will add two examples.
+# Example 1:
+library(readxl)
+EXP_CFU <- read_xlsx("C:/Users/LENOVO/Downloads/CFU_Figure.xlsx")
+library(ggplot2)
+library(multcompView)
+library(plyr)
+
+generate_label_df <- function(TUKEY, variable){
+  
+  # Extract labels and factor levels from Tukey post-hoc 
+  Tukey.levels <- TUKEY[[variable]][,4]
+  Tukey.labels <- data.frame(multcompLetters(Tukey.levels)['Letters'])
+  
+  #I need to put the labels in the same order as in the boxplot :
+  Tukey.labels$treatment=rownames(Tukey.labels)
+  Tukey.labels=Tukey.labels[order(Tukey.labels$treatment) , ]
+  return(Tukey.labels)
+}
+
+model<- lm( EXP_CFU$`log(CFU_Lum/mg)` ~ EXP_CFU$treatment )
+ANOVA=aov(model)
+
+# Tukey test to study each pair of treatment :
+TUKEY <- TukeyHSD(x=ANOVA, 'EXP_CFU$treatment', conf.level=0.95)
+
+labels<-generate_label_df(TUKEY , "EXP_CFU$treatment")
+
+names(labels)<-c('Letters','treatment') 
+
+yvalue<-aggregate(.~treatment, data=EXP_CFU, mean)
+
+final<-merge(labels,yvalue)
+
+library(ggplot2)
+library(ggpubr)
+library("RColorBrewer")
+library(dplyr)
+
+ggboxplot(EXP_CFU, x = "treatment", y = "`log(CFU_Lum/mg)`",
+          color = "black", fill = "forestgreen", palette = "jco", add = "jitter", legend = "none")+
+  theme(axis.text = element_text(size = 17, colour = "black"))+ 
+  theme(axis.title = element_text(size = 20))+
+  labs(x="Treatments ", y = "Log (CFU (Pto)/mg)")+
+  theme_classic()+rotate_x_text(angle = 90)+theme(axis.text = element_text(size = 14, colour = "black"))+
+  theme(axis.title = element_text(size = 17))+ theme(legend.text = element_text(size = 14))+
+  theme(legend.title =element_text(size = 14))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme(plot.title = element_text(vjust=-0.6))+ylim(-0.3,3)+
+  geom_text(data = final, aes(x = treatment, y =max_y + -1.5 , label = Letters), color = "black")
+
+  
+# Example 2:
+CFU_bbc <-read_excel("C:/Users/LENOVO/Dropbox/Amal data/CFU bacillus.xlsx")
+library(readxl)
+# Perform t-test for the +Bacillus and -Bacillus groups within 'treated' data frame
+t_test_results_treated <- t.test(`log(CFU/mg)` ~ treatment, data = CFU_bbc)
+p_value <- t_test_results_treated$p.value
+library(ggpubr)
+ggboxplot(CFU_bbc, x = "treatment", y = "`log(CFU/mg)`",
+          palette = "jco", add = "jitter", color = "black", fill = "cadetblue4")+
+  theme(axis.text = element_text(size = 17, colour = "black"))+ 
+  labs( y = "Log(CFU(Pto))", x="Treatments")+
+  theme_classic()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme_bw()+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  theme(axis.text = element_text(size = 15, colour = "black"))+
+  theme(axis.title = element_text(size = 15))+
+  stat_compare_means(method = "t.test", label = "p.format", label.y = 4.5) 
+
+--------------------------------------------------------------------------------------------------------------
 # Rosetta area measurements
+# open the file data:
+exp_plate<- read_excel("C:/Users/LENOVO/Downloads/Bacillus_Actino_non_sterilized_soil_exp_AREA.xlsx")
+library(ggplot2)
+library(multcompView)
+library(plyr)
+
+generate_label_df <- function(TUKEY, variable){
+  
+  # Extract labels and factor levels from Tukey post-hoc 
+  Tukey.levels <- TUKEY[[variable]][,4]
+  Tukey.labels <- data.frame(multcompLetters(Tukey.levels)['Letters'])
+  
+  #I need to put the labels in the same order as in the boxplot :
+  Tukey.labels$treatment=rownames(Tukey.labels)
+  Tukey.labels=Tukey.labels[order(Tukey.labels$treatment) , ]
+  return(Tukey.labels)
+}
+
+# What is the effect of the treatment on the value ?
+model<- lm( exp_plate$area ~ exp_plate$treatment )
+ANOVA=aov(model)
+# Tukey test to study each pair of treatment :
+TUKEY <- TukeyHSD(x=ANOVA, 'exp_plate$treatment', conf.level=0.95)
+#generate labels using function
+labels<-generate_label_df(TUKEY , "exp_plate$treatment")
+names(labels)<-c('Letters','Treatment') #rename columns for merging
+yvalue<-aggregate(.~treatment, data=exp_plate, mean)# obtain letter position for y axis using means
+final<-merge(labels,yvalue) #merge dataframes
+
+library(ggplot2)
+library(ggpubr)
+
+ggboxplot(exp_plate, x = "treatment", y = "area",
+          palette = "jco", add = "jitter", color = "black", fill = "seagreen")+
+  geom_blank() +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  labs(x = 'Treatments', y = 'Area')  +
+  theme(plot.title = element_text(hjust = 0.5, face='bold')) +
+  geom_vline(aes(xintercept = 2.5, linetype = "dashed")) +
+  geom_vline(aes(xintercept = 5.5, linetype = "dashed")) +
+  theme(plot.title = element_text(vjust = -0.6)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme(axis.text = element_text(size = 14, colour = "black")) +
+  theme(axis.title = element_text(size = 14))+
+geom_text(data = final, aes(x = treatment, y = area, label = Letters), vjust = -0.5, color = "black")
+----------------------------------------------------------------------------------------------------------------
 # Disease area percentage
-# Halo assay experiment
+library(readxl)
+disease_area <- read_excel("C:/Users/LENOVO/Downloads/Bacillus_Actino_non_sterilized_soil_exp_Disease_Area_samples.xlsx")
+library(multcompView)
+library(plyr)
+
+generate_label_df <- function(TUKEY, variable){
+  
+  # Extract labels and factor levels from Tukey post-hoc 
+  Tukey.levels <- TUKEY[[variable]][,4]
+  Tukey.labels <- data.frame(multcompLetters(Tukey.levels)['Letters'])
+  
+  #I need to put the labels in the same order as in the boxplot :
+  Tukey.labels$treatment=rownames(Tukey.labels)
+  Tukey.labels=Tukey.labels[order(Tukey.labels$treatment) , ]
+  return(Tukey.labels)
+}
+
+# What is the effect of the treatment on the value ?
+model<- lm( disease_area$precentage ~ disease_area$treatment )
+ANOVA=aov(model)
+
+# Tukey test to study each pair of treatment :
+TUKEY <- TukeyHSD(x=ANOVA, 'disease_area$treatment', conf.level=0.95)
+
+#generate labels using function
+
+labels<-generate_label_df(TUKEY , "disease_area$treatment")
+
+names(labels)<-c('Letters','Treatment') #rename columns for merging
+
+yvalue<-aggregate(.~treatment, data=disease_area, mean)# obtain letter position for y axis using means
+
+final<-merge(labels,yvalue)
+
+library(ggplot2)
+library(ggpubr)
+ggboxplot(disease_area, x = "treatment", y = "precentage",
+          palette = "jco", add = "jitter", color = "black", fill = "goldenrod3")+
+  geom_blank() +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  labs(x = 'Treatments', y = "diease area/total leaves area")  +
+  theme(plot.title = element_text(hjust = 0.5, face='bold')) +
+  theme(plot.title = element_text(vjust = -0.6)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme(axis.text = element_text(size = 14, colour = "black")) +
+  theme(axis.title = element_text(size = 14))+
+  geom_text(data = final, aes(x = treatment, y = area, label = Letters), vjust = -0.5, color = "black")
+-----------------------------------------------------------------------------------------------------------------
+# Halo assay experiment heatmap
+plates_interactions <- read.csv("C:/Users/LENOVO/Downloads/helo assay heatmap.txt",sep="\t")
+order_file <- read.table("C:/Users/LENOVO/Downloads/SynCom order.txt",header =T)
+# Load required libraries
+library(dplyr)
+library(stringr)
+library(gplots)
+library(RColorBrewer)
+
+# Order the data based on the order file
+order_indices <- match(order_file$sample, plates_interactions$sample)
+ordered_df1 <- plates_interactions[order_indices, ]
+
+# Define and Sort Factor Levels for Phyla
+ordered_df1$phyla <- factor(ordered_df1$phyla, levels = c( "Pseudomonadota", "Bacteroidota","Actinomycetia", "Bacillus","Paenibacillus" ))
+ordered_df1 <- ordered_df1[order(ordered_df1$phyla), ]
+selected_cols <- ordered_df1[, 3:12]
+phyla <- ordered_df1$phyla
+
+# Define colors for the different phyla
+phyla_colors <- c("Pseudomonadota" = "green","Bacteroidota" = "yellow","Actinomycetia" = "blue",
+                  "Bacillus" = "black","Paenibacillus" = "red")
+
+# Assign colors to the rows based on phyla
+row_colors <- phyla_colors[phyla]
+
+# Create the heatmap without clustering
+heatmap.2(as.matrix(selected_cols),
+          Rowv = NA,  # No row clustering
+          Colv = NA,  # No column clustering
+          dendrogram = "none",  # No dendrogram
+          trace = "none",  # No trace lines
+          col = colorRampPalette(c("black", "blue"))(70),  # Color palette for the heatmap
+          RowSideColors = row_colors,  # Apply phyla colors to the rows
+          labRow = NA,  # Hide row labels
+          labCol = 1:10,  # Show column labels as 1 to 10
+          key = TRUE, keysize = 1.5, density.info = "none", 
+          margins = c(12, 16),  # Increase margins
+          main = "Bacterial Interactions Heatmap",
+          srtCol = 45,
+          adjCol = c(1, 0.5))
+
+# Add a legend for the phyla colors
+legend("topright", legend = names(phyla_colors), fill = phyla_colors, title = "Bacterial phyla", cex = 0.8)
+
+-----------------------------------------------------------------------------------------------------------------
 # AntiSMASH plots
-# RNA-Seq modle
+library(dplyr)
+library(ggplot2)
+library(readxl)
+antismash_list <- read_excel("C:/Users/LENOVO/Downloads/antismash_plots/SynCom_Antismash_data.xlsx")
+
+SynCom_list <-read_excel( "C:/Users/LENOVO/Downloads/SynCom_ID.xlsx")
+
+antismash_data <- merge(
+  antismash_list,
+  SynCom_list[, c("IMG Genome ID", "strain ID", "pylms", "genus","family")],
+  by = "IMG Genome ID",
+  all.x = TRUE
+)
+
+SynCom_order <- read.table("C:/Users/LENOVO/Downloads/SynCom order24-9-24.txt",header =T)
+SynCom_order <- SynCom_order$sample
+
+plot_data <- plot_data %>%
+  filter(`strain ID` %in% SynCom_order) %>%
+  arrange(match(`strain ID`, SynCom_order))
+
+plot_data <- antismash_data %>%
+  group_by(`strain ID`, Type) %>%
+  summarise(count = n()) 
+
+color_gradient <- colorRampPalette(c("midnightblue","blue2","cyan","maroon4","violetred3","pink","yellow1","red","brown","seagreen3","forestgreen","green"))(34)
+
+# Stacked Bar plot using the gradient colors
+ggplot(plot_data, aes(x = `strain ID`, y = count, fill = Type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(x = "Strains", y = "Count", fill = "Type") +
+  scale_fill_manual(values = color_gradient) +  # Apply the gradient colors
+  theme_minimal() +
+  scale_x_discrete(limits = SynCom_order) +
+  theme(legend.position = "bottom",  # Place the legend at the top
+        axis.text.x = element_text(size = 10, angle = 90, colour = "black"),
+        axis.text.y = element_text(size = 12, colour = "black"),
+        legend.text = element_text(size = 10),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"))
+-------------------------------------------------------------------------------------------------------------
+# RNA-Seq modle and the heatmap
+library(DESeq2)       
+library(vegan)        
+library(ggplot2)      
+library(ggpubr)      
+count_file <- read.csv("C:/Users/LENOVO/Downloads/RNA-Seq 23-11-23/counts_tabel.csv",sep = ",")
+
+samples <- data.frame(
+  file_name = c("full1_WOPTO", 
+                "full2_WOPTO","full3_WOPTO", "WBAC1_WOPTO","WBAC2_WOPTO","WBAC3_WOPTO",
+                "full1_WPTO", "full2_WPTO", "full3_WPTO", 
+                "WBAC1_WPTO","WBAC2_WPTO","WBAC3_WPTO"),
+  
+  SynCom = factor(c(rep("Full", 3),  rep("WBac",3),rep("Full", 3),rep("WBac",3))),
+  PTO = factor(c(rep("without_PTO",6), rep("with_PTO",6))),
+  group = factor(c(rep("full_WOPTO", 3),rep("WBAC_WOPTO",3),rep("full_WPTO",3),rep("WBAC_WPTO",3))))
+
+# Ensure the count_file is properly structured
+rownames(count_file) <- count_file$Geneid
+count_file <- count_file[,-1]  # Remove gene_id column if present
+
+# Create DESeqDataSet
+dds <- DESeqDataSetFromMatrix(countData = count_file, 
+                              colData = samples, 
+                              design = ~ group)
+
+# Running DESeq2
+dds <- DESeq(dds)
+library(dplyr)
+library(dbplyr)
+sizeFactors(dds)
+dispersions(dds)
+results(dds)
+library(tibble)
+res <- results(dds, tidy=TRUE)
+res <- as_tibble(res)
+res
+sigresults <- res %>% 
+  filter(padj < 0.05)
+sigresults
+
+library(readr)
+geneIDs <- sigresults[, 1]
+geneIDs <- geneIDs$row
+selectedRows <- count_file[rownames(count_file) %in% geneIDs, ]
+selectedRows$Full_withoutPTO <- rowMeans(selectedRows[, c("full1_WOPTO", "full2_WOPTO" ,"full3_WOPTO")])
+selectedRows$WBac_withoutPTO <- rowMeans(selectedRows[, c("WBAC1_WOPTO", "WBAC2_WOPTO" ,"WBAC3_WOPTO")])
+selectedRows$Full_withPTO <- rowMeans(selectedRows[, c("full1_WPTO",  "full2_WPTO" , "full3_WPTO")])
+selectedRows$WBac_withPTO <- rowMeans(selectedRows[, c("WBAC1_WPTO",  "WBAC2_WPTO",  "WBAC3_WPTO")])
+geneIDs <- as.data.frame(selectedRows[, 1])
+selectedRows<-selectedRows[,-c(1:12)]
+expressionData <- selectedRows[,1:4]
+geneExp_matrix <- as.matrix(selectedRows[1:4])
+head(geneExp_matrix)
+
+library(tidyverse)
+library(magrittr)
+library(pheatmap)
+library(RColorBrewer)
+library(rio)
+library(ComplexHeatmap)
+
+mat.z <- t(apply(geneExp_matrix,1,scale))
+mat.z<- na.omit(mat.z)
+colnames(mat.z) <- colnames(geneExp_matrix)
+# Load the necessary libraries
+library(ComplexHeatmap)
+library(circlize)  # For color scales
+
+# Define color scale
+col_fun <- colorRamp2(c(-2, 0, 2), c("dodgerblue4", "white", "firebrick3"))
+
+# Create the heatmap with row clustering (6 clusters)
+ht <- Heatmap(mat.z,
+              name = "Z-score",
+              cluster_rows = TRUE,
+              cluster_columns = FALSE,
+              row_km = 5,  # Specify number of row clusters
+              col = col_fun, row_names_gp = gpar(fontsize = 0.01),  # Adjust row name font size
+              column_names_gp = gpar(fontsize = 5),
+              show_row_names = TRUE,
+              show_column_names = TRUE)
+
+# Draw the heatmap
+ht_drawn <- draw(ht)
+------------------------------------------------------------------------------------------------------------
+# 16 Seq code
+# Done by Mosheh Alon
+# Sequencing anylsis
+
+###Import fastqs to Qiime2
+
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path fastqs \
+  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path demux-paired-end.qza
+
+###Remove adapters and quality trim
+
+qiime cutadapt trim-paired --i-demultiplexed-sequences demux-paired-end.qza --o-trimmed-sequences trimmed-seqs.qza --verbose --p-cores 50 --p-minimum-length 290 --p-quality-cutoff-5end 10 --p-quality-cutoff-3end 10
+
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs trimmed-seqs.qza \
+  --p-trunc-len-f 300 \
+  --p-trunc-len-r 300 \
+    --p-trim-left-f 20 \
+  --p-trim-left-r 10 \
+  --p-n-threads 60 \
+  --o-table table.qza \
+  --o-representative-sequences rep-seqs.qza \
+  --o-denoising-stats denoising-stats.qza \
+  --verbose
+
+#### Read mapping to full 16S sequences
+
+qiime greengenes2 non-v4-16s --i-table table.qza --i-sequences rep-seqs.qza --i-backbone /mnt/LargeStorageNoBackup/Datasets/Moshea/Databases/Greengenes2/2024.09.backbone.full-length.fna.qza --o-mapped-table gg2_table.qza --o-representatives gg2_reps.qza --p-threads 128 --verbose
+
+#### Taxonomy
+
+qiime greengenes2 taxonomy-from-table --i-table gg2_table.qza --i-reference-taxonomy /mnt/LargeStorageNoBackup/Datasets/Moshea/Databases/Greengenes2/2024.09.taxonomy.asv.nwk.qza --o-classification gg2.taxonomy.qza --verbose 
+
+  qiime taxa barplot \
+    --i-table table.qza \
+    --i-taxonomy taxonomy-paired-end.qza \
+    --m-metadata-file Amal_metadata.tsv \
+    --o-visualization taxa-bar-plots.qzv
+	
+  qiime phylogeny align-to-tree-mafft-fasttree \
+    --i-sequences rep-seqs.qza \
+    --o-alignment aligned-rep-seqs.qza \
+    --o-masked-alignment masked-aligned-rep-seqs.qza \
+    --o-tree unrooted-tree.qza \
+    --o-rooted-tree rooted-tree.qza
+	
+	qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table gg2_table.qza\
+  --m-metadata-file Amal_metadata.tsv \
+  --p-sampling-depth 1000\
+  --output-dir core-metrics-results
+###################################
+# Ordination_code_for_paper by R
+library(phyloseq)
+library(vegan)
+library(qiime2R)
+library(tidyverse)
+library(ggplot2)
+library(ggforce)
+library(dplyr)
+library(ANCOMBC)
+library(ggrepel)
+library(ape)
+library(plyr)
+setwd("C:/Users/owner/My Drive (moshe.alon@mail.huji.ac.il)/Moshe/Amal_Project/Amal_Figure_2S/")
+ps<-qza_to_phyloseq(features="C:/Users/owner/My Drive (moshe.alon@mail.huji.ac.il)/Moshe/Amal_Project/Amal_Figure_2S/gg2_table.qza",
+                    tree ="C:/Users/owner/My Drive (moshe.alon@mail.huji.ac.il)/Moshe/Amal_Project/Amal_Figure_2S/rooted-tree.qza",
+                    "C:/Users/owner/My Drive (moshe.alon@mail.huji.ac.il)/Moshe/Amal_Project/Amal_Figure_2S/gg2.taxonomy.qza",
+                    metadata = "C:/Users/owner/My Drive (moshe.alon@mail.huji.ac.il)/Moshe/Amal_Project/Amal_Figure_2S/Amal_metadata.tsv")
+ps_melt <- psmelt(ps)
+
+samples_remove <- c("Full_2_b","Full_1_b","Full_1_a")
+
+ps_subset_by_names <- subset_samples(ps, sample_names(ps) != samples_remove)
+
+subset_inoculum <- subset_samples(ps, Tissue != "Inoculum")
+
+# Optionally, save the results to a CSV file
+write.csv(percentage_abundance_df, "percentage_abundance_of_subset_asvs.csv", row.names = FALSE)
+
+GP.pcoa <- ordinate(ps_subset_by_names, "PCoA", "bray")
+
+p1 =
+  plot_ordination(subset_inoculum, GP.pcoa, type="samples", color= "Tissue")+
+  geom_point(size = 5)+
+  scale_color_manual(breaks = c("rhizosphere",
+                                "root",
+                                "shoot"),
+                     values = c("rhizosphere" = "coral3",
+                                "root" = "coral4",
+                                "shoot" ="darkgreen"),
+                     labels = c(
+                       "rhizosphere" = "Full Syncom Rhizosphere",
+                       "root" = "Full SynCom Root",
+                       "shoot" = "Full SynCom Shoot"
+                     ))+
+  labs(x = "Principal Coordinate 1 (42.3%)", y = "Principal Coordinate 2 (17.9%)")+
+  theme(axis.text.x = element_text(face="bold",size=18, color = "black",vjust = 0.5), 
+        axis.text.y = element_text(face="bold", size=18, color = "black"), 
+        axis.title.y = element_text(face="bold", size=18, color = "black"), 
+        axis.title.x = element_text(face="bold", size=18, color = "black"), 
+        axis.line = element_line(linewidth = 1, linetype = "solid", color = "black"),
+        plot.title = element_text(face = "bold", size = 18,vjust = 9,hjust = 0.5, color = "black"),
+        panel.background = element_rect(fill = "white"),
+        legend.position.inside = c(1.3,0.5),
+        legend.key=element_blank(),
+        legend.background = element_blank(),
+        legend.text = element_text(size = 22),
+        legend.title = element_text(size = 18,face = 'bold'),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.margin=unit(c(1,5,3,1),"cm")) 
+
+p1
+
+ggsave("Figure_S2.svg", p1, width = 17, height = 6, dpi = 300, device = "svg")
+#########################
+# Checking that all sequencing samples come from the SynCom by R
+subset_inoculum <- subset_samples(ps_subset_by_names, Tissue != "Inoculum")
+# Extract the ASV table from the subsetted phyloseq object
+subset_asv_table <- otu_table(subset_inoculum)
+
+# Convert the ASV table to a data frame for easier handling
+subset_asv_df <- as.data.frame(subset_asv_table)
+
+# Extract the ASV IDs from the subset
+subset_asv_ids <- rownames(subset_asv_df)
+
+# Extract the ASV table from the original phyloseq object
+original_asv_table <- otu_table(ps)
+
+# Convert the original ASV table to a data frame
+original_asv_df <- as.data.frame(original_asv_table)
+
+# Calculate the total abundance for each sample in the original phyloseq object
+total_abundance <- colSums(original_asv_df)
+
+# Subset the original ASV table to include only the ASVs from the subset
+subset_in_original_asv_df <- original_asv_df[subset_asv_ids, , drop=FALSE]
+
+# Calculate the abundance of the subsetted ASVs in the original phyloseq object
+subset_abundance <- colSums(subset_in_original_asv_df)
+
+# Calculate the percentage of the total abundance for each sample
+percentage_abundance <- (subset_abundance / total_abundance) * 100
+
+# Create a data frame with the results
+percentage_abundance_df <- data.frame(Sample=names(percentage_abundance),
+                                      TotalAbundance=total_abundance,
+                                      SubsetAbundance=subset_abundance,
+                                      PercentageAbundance=percentage_abundance)
+
+# Print the results
+print(percentage_abundance_df)
+
+# Optionally, save the results to a CSV file
+write.csv(percentage_abundance_df, "percentage_abundance_of_subset_asvs.csv", row.names = FALSE)
