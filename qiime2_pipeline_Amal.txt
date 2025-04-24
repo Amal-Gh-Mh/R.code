@@ -1,0 +1,55 @@
+
+###Import fastqs to Qiime2
+
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path fastqs \
+  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path demux-paired-end.qza
+  
+
+###Remove adapters and quality trim
+
+qiime cutadapt trim-paired --i-demultiplexed-sequences demux-paired-end.qza --o-trimmed-sequences trimmed-seqs.qza --verbose --p-cores 50 --p-minimum-length 290 --p-quality-cutoff-5end 10 --p-quality-cutoff-3end 10
+
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs trimmed-seqs.qza \
+  --p-trunc-len-f 300 \
+  --p-trunc-len-r 300 \
+    --p-trim-left-f 20 \
+  --p-trim-left-r 10 \
+  --p-n-threads 60 \
+  --o-table table.qza \
+  --o-representative-sequences rep-seqs.qza \
+  --o-denoising-stats denoising-stats.qza \
+  --verbose
+
+
+#### Read mapping to full 16S sequences
+
+qiime greengenes2 non-v4-16s --i-table table.qza --i-sequences rep-seqs.qza --i-backbone /mnt/LargeStorageNoBackup/Datasets/Moshea/Databases/Greengenes2/2024.09.backbone.full-length.fna.qza --o-mapped-table gg2_table.qza --o-representatives gg2_reps.qza --p-threads 128 --verbose
+
+#### Taxonomy
+
+qiime greengenes2 taxonomy-from-table --i-table gg2_table.qza --i-reference-taxonomy /mnt/LargeStorageNoBackup/Datasets/Moshea/Databases/Greengenes2/2024.09.taxonomy.asv.nwk.qza --o-classification gg2.taxonomy.qza --verbose 
+
+  qiime taxa barplot \
+    --i-table table.qza \
+    --i-taxonomy taxonomy-paired-end.qza \
+    --m-metadata-file Amal_metadata.tsv \
+    --o-visualization taxa-bar-plots.qzv
+	
+  qiime phylogeny align-to-tree-mafft-fasttree \
+    --i-sequences rep-seqs.qza \
+    --o-alignment aligned-rep-seqs.qza \
+    --o-masked-alignment masked-aligned-rep-seqs.qza \
+    --o-tree unrooted-tree.qza \
+    --o-rooted-tree rooted-tree.qza
+	
+	qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table gg2_table.qza\
+  --m-metadata-file Amal_metadata.tsv \
+  --p-sampling-depth 1000\
+  --output-dir core-metrics-results
+  
